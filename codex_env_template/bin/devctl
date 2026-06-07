@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cmd="${1:-}"
+shift || true
+
+runner_host="${CODEX_RUNNER_HOST:-host.docker.internal}"
+runner_user="${CODEX_RUNNER_USER:-codex-runner}"
+runner_key="${CODEX_RUNNER_KEY:-/home/codex/.ssh/id_ed25519}"
+known_hosts="${CODEX_KNOWN_HOSTS:-/home/codex/.ssh/known_hosts}"
+ssh_args=(-o BatchMode=yes)
+
+if [[ -r "$runner_key" ]]; then
+  ssh_args+=(-i "$runner_key")
+fi
+if [[ -r "$known_hosts" ]]; then
+  ssh_args+=(-o UserKnownHostsFile="$known_hosts")
+fi
+
+case "$cmd" in
+  project-status|project-diff|project-files|ps|logs|ip|smoke-url|compose-ps|compose-up|compose-down|front-lint|front-typecheck|front-build|front-test|api-build|api-test)
+    ssh "${ssh_args[@]}" "${runner_user}@${runner_host}" "$cmd" "$@"
+    ;;
+  *)
+    echo "Denied local command: $cmd" >&2
+    echo "Allowed: project-status project-diff project-files ps logs ip smoke-url compose-ps compose-up compose-down front-lint front-typecheck front-build front-test api-build api-test" >&2
+    exit 2
+    ;;
+esac
